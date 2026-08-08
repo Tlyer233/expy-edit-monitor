@@ -67,6 +67,7 @@ curl "http://127.0.0.1:9723/api/edit_monitor/discovered?app_name=PyCharm"
 
 **⑥ 备注**：返回平铺数据，树结构由前端构建；`hit_count` = 该文件被命中修改的次数。
 
+---
 
 #### 2. GET /api/edit_monitor/config
 
@@ -104,6 +105,8 @@ curl "http://127.0.0.1:9723/api/edit_monitor/config"
 
 **⑥ 备注**：返回 `config.json` 完整配置，前端 UI 加载用。
 
+---
+
 #### 3. PUT /api/edit_monitor/config
 
 **① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
@@ -139,6 +142,8 @@ curl -X PUT "http://127.0.0.1:9723/api/edit_monitor/config" \
 ```
 
 **⑥ 备注**：写回 `config.json`，保存后 UI 会触发 daemon 重启生效。
+
+---
 
 #### 4. GET /api/edit_monitor/mac_apps
 
