@@ -6,29 +6,28 @@
 
 > macOS 内核级文件编辑监控插件 —— 记录每次保存、算 diff、生成 LLM 修改摘要，回答「某天我到底改了什么」。
 
-①基于 macOS 内置的 `eslogger`（Endurance Security 事件流，10.15+ 内核级文件事件）内核级事件流
-②**按应用粒度勾选监控**（PyCharm、WPS Office 等），对命中应用的保存行为做快照、diff、LLM 摘要，持久化到本地 SQLite，并提供 REST API 与 Web 配置界面。
-③内容解析**目前**支持普通文本（unified diff）与 Office/PDF 等含图文档（markitdown + 视觉模型），
-④reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等, 后续会进一步支持），拓展性极强。
-⑤是旧版 `5_edit_monitor`（inode追踪）的升级版，核心改进为 **xattr 持久化身份标识**(魔法标识)，解决 Office / Typora 等应用原子保存（先 create 临时文件再 rename）导致 inode 变化、文件追踪链断裂的问题。
+1. 基于 macOS 内置的 `eslogger`（Endurance Security 事件流，10.15+ 内核级文件事件）内核级事件流
 
-## 一. Daemon
+2. **按应用粒度勾选监控**（PyCharm、WPS Office 等），对命中应用的保存行为做快照、diff、LLM 摘要，持久化到本地 SQLite，并提供 REST API 与 Web 配置界面。
 
-**存在，是插件的核心运行形态**（`manifest.json:8` `"daemon": { "sudo": true, "entry": "main.py" }`）。
+3. 内容解析**目前**支持普通文本（unified diff）与 Office/PDF 等含图文档（markitdown + 视觉模型），
 
-宿主生成 plist（`/Library/LaunchDaemons/com.expy.edit_monitor.plist`）以 **sudo + KeepAlive** 方式常驻 `main.py`。`eslogger` 需要 root 权限，`main.py:58-60` 启动时校验 `geteuid()==0`。
+4. reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等, 后续会进一步支持），拓展性极强。
+5. 是旧版 `5_edit_monitor`（inode追踪）的升级版，核心改进为 **xattr 持久化身份标识**(魔法标识)，解决 Office / Typora 等应用原子保存（先 create 临时文件再 rename）导致 inode 变化、文件追踪链断裂的问题。
 
-启动后为**三平级线程接力**（`main.py:62-75`）：
+## 一. Daemon ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-```
-main 主线程:  eslogger 子进程 → 事件循环 → eslistener.handle_file_event
-Worker A:     diff_worker 轮询  status: diffing → descing
-Worker B:     desc_worker 轮询  status: descing → done
-```
+#### Q1: 是否需要sudo?
 
-事件类型：`write / rename / create / clone / exchangedata` 五类内核事件（`main.py:67`）。
+需要! 因为mac的eslogger需要
 
-## 二. API
+#### Q2: 为什么需要常驻?
+
+因为需要实时获取数据
+
+
+
+## 二. API ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 ```md
 1. GET /api/edit_monitor/config
@@ -66,7 +65,7 @@ Worker B:     desc_worker 轮询  status: descing → done
   - Responses: `[{name, exec_path}]` 列表（去重、按名称排序）
 ```
 
-## 三. DB
+## 三. DB ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 - `file_events.db` 包含两张表：
 
@@ -108,7 +107,7 @@ CREATE TABLE IF NOT EXISTS event (
 - `event.diff_des`：对 `event.diff` 的自然语言描述（由本地 LLM 生成）
 - `meta.mid`：所有被监控文件都带有 `expy.edit.monitor: <uuid.uuid4()>` 的 xattr 属性
 
-## 四. UI
+## 四. UI ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
 
@@ -123,7 +122,7 @@ React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
 
 ***
 
-## 五. SKILL
+## 五. SKILL ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 **`skills/file_edit_query`**（351 行 SKILL.md，`manifest.json:27-29`）
 
