@@ -10,77 +10,13 @@
 
 ***
 
-## 一、插件层级 和定位 (Level)
+## 零. 插件层级 和定位 (Level)
 
-**BASIC / Daemon 类**（`manifest.json:3` `"category": "BASIC.Daemon"`）
+**层级**：[![BASIC](https://img.shields.io/badge/-BASIC-3088d1)]─── [![AGENT](https://img.shields.io/badge/-AGENT-8250df)] <======= [![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706)] =======> [![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)]
 
-完整应用架构（加粗列为本插件所属的 BASIC.Daemon 层级）：
+**定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#一-daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#二-api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#三-db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#四-ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#五-skill)
 
-<pre>
-┌────────────────────┐ ┌───────────────────┐ ┌───────────────────────────────────────────────────────────────┐ ┌────────────────────┐
-│ <mark><b>Daemon</b></mark>             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
-│ <mark><b>1.chat_monitor</b></mark>     │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
-│   <mark><b>- chat_query</b></mark>     │ │                   │ │                                                               │ │                    │
-│   <mark><b>- todo_idntity</b></mark>   │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
-│ <mark><b>2.edit_monitor</b></mark>     │ │  - chat(api)      │ │                                                               │ │                    │
-│   <mark><b>- edit_query</b></mark>     │ │                   │ │                                                               │ │                    │
-│ <mark><b>3.siri_daemon</b></mark>      │ │ CODEX             │ │                                                               │ │                    │
-│   <mark><b>- clean_input</b></mark>    │ │  - chat(api)      │ │                                                               │ │                    │
-│   <mark><b>- suit_for_talk</b></mark>  │ │                   │ │                                                               │ │ WECAHT             │
-│                    │ │ CLAUDE CODE       │ │                                                               │ │                    │
-│ Script             │ │  - chat(api)      │ │                                                               │ │ FEISHU             │
-│ 1.health_monitor   │ │                   │ │                                                               │ │  - daily_summary   │
-│   - health_query   │ │                   │ │                                                               │ │                    │
-│   - health_summary │ │                   │ │                                                               │ │                    │
-│ 2.hisroty_monitor  │ │                   │ │                                                               │ │                    │
-│   - history_query  │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ ├───────────────────────────────────────────────────────────────┤ │                    │
-│                    │ │                   │ │Cron                                                           │ │                    │
-│                    │ │                   │ │        1.todo_operat 2.chat_query 3.todo_identity [2min]      │ │                    │
-│                    │ │                   │ │ HERMES ────────────────────────────────────────────────► MTD  │ │                    │
-│                    │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ │        1.todo_operat 2.health_summary 3.history   [2min]      │ │                    │
-│ ASSIST Daemon      │ │                   │ │ HERMES ──────────────────────────────────────────────► FEISHU │ │                    │
-│ 1.audio_pipline    │ │                   │ │        4.edit_query 5.daily_summary                           │ │                    │
-│ 2.ollama_pipline   │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ │                                                               │ │                    │
-│ OTHER              │ │                   │ │                                                               │ │                    │
-│ - reply_rule       │ │                   │ │                                                               │ │                    │
-│ - feedback_rule    │ │                   │ │                                                               │ │                    │
-│ - think_twice      │ │                   │ │                                                               │ │                    │
-└────────────────────┘ └───────────────────┘ └───────────────────────────────────────────────────────────────┘ └────────────────────┘
-       BASIC                  AGENT                                 SCHEDULE WORK FLOW                                INTERACT
-</pre>
-
-四件套全具备的完整形态插件：
-
-| 维度     | 能力                                             |
-| ------ | ---------------------------------------------- |
-| Daemon | ✅ 常驻守护进程（sudo + eslogger 监听）                   |
-| UI     | ✅ React 配置界面（iframe 嵌入宿主）                      |
-| Skills | ✅ `file_edit_query` 查询 skill                   |
-| API    | ✅ 4 个 REST 端点（config / discovered / mac\_apps） |
-| DB     | ✅ 本地 SQLite（`data/file_events.db`）             |
-
-***
-
-## 二、UI
-
-React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
-
-由宿主以 **iframe** 加载（`manifest.json:12` `ui.entry=index.html`），支持明暗双主题（CSS 变量 + `html.dark` 切换）。
-
-主要功能：
-
-- **应用侧栏**：已配置应用列表，`enabled` 开关一键启停，支持添加 / 移除本机 App
-- **主面板**：应用详情 + 「文件后缀 / 忽略规则」标签编辑器
-- **文件树**：某应用发现过的文件树（前端 `buildTree.js` 自建），支持忽略规则过滤与刷新
-- **弹层**：忽略规则候选、本机 App 列表（`mac_apps` 接口扫描）、新应用后缀多选
-
-***
-
-## 三、Daemon (守护进程)
+## 一. Daemon
 
 **存在，是插件的核心运行形态**（`manifest.json:8` `"daemon": { "sudo": true, "entry": "main.py" }`）。
 
@@ -96,65 +32,7 @@ Worker B:     desc_worker 轮询  status: descing → done
 
 事件类型：`write / rename / create / clone / exchangedata` 五类内核事件（`main.py:67`）。
 
-***
-
-## 四、Skills
-
-**`skills/file_edit_query`**（351 行 SKILL.md，`manifest.json:27-29`）
-
-面向 Agent（Hermes 等）的查询 skill：直接读 `data/file_events.db`，回答「某天做了什么 / 哪些文件被修改过」，并从原始编辑数据提炼「主任务 + 子任务」的当日工作总结。
-
-- **两阶段流程**：Phase 1 查询（8 个 SQL 模板：按天 / 按应用 / 去重文件 / 项目分布 / 迭代追踪等）→ Phase 2 分析（观察 → 过滤噪声 → 归并主任务 → 提炼子任务 → 反问验证）
-- **两种输出**：标准表格模式（主任务/分组/投入时段 + 子任务表）与快速语音模式（口语化总结）
-- 内置噪声过滤速查表、合并规则、Pitfalls（如 `diff_des` 可能为 NULL、`mode=llm` 的 diff 含 `[[IMG]] DESC:` 占位符）
-
-***
-
-## 五、数据库 (DB)
-
-- `file_events.db` 包含两张表：
-
-```sql
-CREATE TABLE IF NOT EXISTS meta (
-    id         INTEGER PRIMARY KEY,        -- 自增主键
-    mid        TEXT    UNIQUE NOT NULL,    -- xattr 魔法 ID，跨 inode 稳定
-    file_path  TEXT    NOT NULL,           -- 当前文件路径
-    content    TEXT,                       -- 最新文件内容（用于 diff）
-    updated_at TEXT    NOT NULL            -- 最后更新时间
-);
-
-CREATE TABLE IF NOT EXISTS event (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT, -- 自增事件 ID
-    ref_meta    INTEGER NOT NULL,                  -- 外键 → meta.id
-    file_path   TEXT    NOT NULL,                  -- 事件发生时文件路径
-    proc_name   TEXT    NOT NULL,                  -- 触发进程名（显示名）
-    st          TEXT    NOT NULL,                  -- 事件开始时间
-    et          TEXT    NOT NULL,                  -- 事件结束时间
-    size_bytes  INTEGER,                           -- 文件大小（字节）
-    diff        TEXT,                              -- 差异文本（Worker A 回填）
-    diff_des    TEXT,                              -- 差异描述（Worker B 回填）
-    status      TEXT    NOT NULL DEFAULT 'diffing', -- 处理状态：diffing→descing→done|failed
-    tmpfilepath TEXT,                              -- 事件快照临时文件路径
-    mode        TEXT,                              -- 可选值llm或者plain
-    FOREIGN KEY (ref_meta) REFERENCES meta(id)     -- 关联 meta 表
-);
-```
-
-### 重要字段解析
-
-- 整体分析：meta 表存每个文件的元信息（一行一个文件）；该文件的所有编辑记录在 event 表，通过 `ref_meta` 关联
-- `event.status`（状态机，由两个 Worker 接力驱动）：
-  - ① `diffing`：已入队，缺 `diff` 字段，Worker A — Diff Worker 抓取此状态
-  - ② `descing`：已有 `diff`，缺 `diff_des` 字段，Worker B — Desc Worker 抓取此状态
-  - ③ `done`：`diff` 与 `diff_des` 均处理完毕
-  - ④ `failed`：任一阶段失败即转为该状态
-- `event.diff`：`difflib` 生成的 unified diff（`diff -u file1 file2` 格式）；含图片内容需本地 LLM 参与
-- `event.diff_des`：对 `event.diff` 的自然语言描述（由本地 LLM 生成）
-- `meta.mid`：所有被监控文件都带有 `expy.edit.monitor: <uuid.uuid4()>` 的 xattr 属性
-
-***
-
-## 六、对外 API
+## 二. API
 
 ```md
 1. GET /api/edit_monitor/config
@@ -192,7 +70,74 @@ CREATE TABLE IF NOT EXISTS event (
   - Responses: `[{name, exec_path}]` 列表（去重、按名称排序）
 ```
 
+## 三. DB
+
+- `file_events.db` 包含两张表：
+
+```sql
+CREATE TABLE IF NOT EXISTS meta (
+    id         INTEGER PRIMARY KEY,        -- 自增主键
+    mid        TEXT    UNIQUE NOT NULL,    -- xattr 魔法 ID，跨 inode 稳定
+    file_path  TEXT    NOT NULL,           -- 当前文件路径
+    content    TEXT,                       -- 最新文件内容（用于 diff）
+    updated_at TEXT    NOT NULL            -- 最后更新时间
+);
+
+CREATE TABLE IF NOT EXISTS event (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT, -- 自增事件 ID
+    ref_meta    INTEGER NOT NULL,                  -- 外键 → meta.id
+    file_path   TEXT    NOT NULL,                  -- 事件发生时文件路径
+    proc_name   TEXT    NOT NULL,                  -- 触发进程名（显示名）
+    st          TEXT    NOT NULL,                  -- 事件开始时间
+    et          TEXT    NOT NULL,                  -- 事件结束时间
+    size_bytes  INTEGER,                           -- 文件大小（字节）
+    diff        TEXT,                              -- 差异文本（Worker A 回填）
+    diff_des    TEXT,                              -- 差异描述（Worker B 回填）
+    status      TEXT    NOT NULL DEFAULT 'diffing', -- 处理状态：diffing→descing→done|failed
+    tmpfilepath TEXT,                              -- 事件快照临时文件路径
+    mode        TEXT,                              -- 可选值llm或者plain
+    FOREIGN KEY (ref_meta) REFERENCES meta(id)     -- 关联 meta 表
+);
+```
+
+#### 重要字段解析
+
+- 整体分析：meta 表存每个文件的元信息（一行一个文件）；该文件的所有编辑记录在 event 表，通过 `ref_meta` 关联
+- `event.status`（状态机，由两个 Worker 接力驱动）：
+  - ① `diffing`：已入队，缺 `diff` 字段，Worker A — Diff Worker 抓取此状态
+  - ② `descing`：已有 `diff`，缺 `diff_des` 字段，Worker B — Desc Worker 抓取此状态
+  - ③ `done`：`diff` 与 `diff_des` 均处理完毕
+  - ④ `failed`：任一阶段失败即转为该状态
+- `event.diff`：`difflib` 生成的 unified diff（`diff -u file1 file2` 格式）；含图片内容需本地 LLM 参与
+- `event.diff_des`：对 `event.diff` 的自然语言描述（由本地 LLM 生成）
+- `meta.mid`：所有被监控文件都带有 `expy.edit.monitor: <uuid.uuid4()>` 的 xattr 属性
+
+## 四. UI
+
+React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
+
+由宿主以 **iframe** 加载（`manifest.json:12` `ui.entry=index.html`），支持明暗双主题（CSS 变量 + `html.dark` 切换）。
+
+主要功能：
+
+- **应用侧栏**：已配置应用列表，`enabled` 开关一键启停，支持添加 / 移除本机 App
+- **主面板**：应用详情 + 「文件后缀 / 忽略规则」标签编辑器
+- **文件树**：某应用发现过的文件树（前端 `buildTree.js` 自建），支持忽略规则过滤与刷新
+- **弹层**：忽略规则候选、本机 App 列表（`mac_apps` 接口扫描）、新应用后缀多选
+
 ***
+
+## 五. SKILL
+
+**`skills/file_edit_query`**（351 行 SKILL.md，`manifest.json:27-29`）
+
+面向 Agent（Hermes 等）的查询 skill：直接读 `data/file_events.db`，回答「某天做了什么 / 哪些文件被修改过」，并从原始编辑数据提炼「主任务 + 子任务」的当日工作总结。
+
+- **两阶段流程**：Phase 1 查询（8 个 SQL 模板：按天 / 按应用 / 去重文件 / 项目分布 / 迭代追踪等）→ Phase 2 分析（观察 → 过滤噪声 → 归并主任务 → 提炼子任务 → 反问验证）
+- **两种输出**：标准表格模式（主任务/分组/投入时段 + 子任务表）与快速语音模式（口语化总结）
+- 内置噪声过滤速查表、合并规则、Pitfalls（如 `diff_des` 可能为 NULL、`mode=llm` 的 diff 含 `[[IMG]] DESC:` 占位符）
+
+
 
 ## 七、整体架构
 
@@ -326,3 +271,41 @@ eslogger 内核事件(JSON)
 ## License
 
 MIT
+
+
+
+## 架构
+
+```
+┌────────────────────┐ ┌───────────────────┐ ┌───────────────────────────────────────────────────────────────┐ ┌────────────────────┐
+│ Daemon             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
+│ 后台常驻插件,适用于   │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
+│ 需要实时获取最新数据  │ │                   │ │ HERMES ◄──────────────────────────────────────────────── SIRI │ │                    │
+│ 的插件  │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
+│ 2.edit_monitor     │ │  - chat(api)      │ │                                                               │ │                    │
+│   - edit_query     │ │                   │ │                                                               │ │                    │
+│ 3.siri_daemon      │ │ CODEX             │ │                                                               │ │                    │
+│   - clean_input    │ │  - chat(api)      │ │                                                               │ │ WECAHT             │
+│   - suit_for_talk  │ │                   │ │                                                               │ │                    │
+│                    │ │ CLAUDE CODE       │ │                                                               │ │ FEISHU             │
+│ Script             │ │  - chat(api)      │ │                                                               │ │  - daily_summary   │
+│ 1.health_monitor   │ │                   │ │                                                               │ │                    │
+│   - health_query   │ │                   │ │                                                               │ │                    │
+│   - health_summary │ │                   │ ├───────────────────────────────────────────────────────────────┤ │                    │
+│ 2.hisroty_monitor  │ │                   │ │Cron                                                           │ │                    │
+│   - history_query  │ │                   │ │        1.todo_operat 2.chat_query 3.todo_identity [2min]      │ │                    │
+│                    │ │                   │ │ HERMES ────────────────────────────────────────────────► MTD  │ │                    │
+│                    │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ │        1.todo_operat 2.health_summary 3.history   [2min]      │ │                    │
+│ ASSIST Daemon      │ │                   │ │ HERMES ──────────────────────────────────────────────► FEISHU │ │                    │
+│ 1.audio_pipline    │ │                   │ │        4.edit_query 5.daily_summary                           │ │                    │
+│ 2.ollama_pipline   │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ │                                                               │ │                    │
+│ OTHER              │ │                   │ │                                                               │ │                    │
+│ - reply_rule       │ │                   │ │                                                               │ │                    │
+│ - feedback_rule    │ │                   │ │                                                               │ │                    │
+│ - think_twice      │ │                   │ │                                                               │ │                    │
+└────────────────────┘ └───────────────────┘ └───────────────────────────────────────────────────────────────┘ └────────────────────┘
+       BASIC                  AGENT                                 SCHEDULE WORK FLOW                                INTERACT       
+```
+
