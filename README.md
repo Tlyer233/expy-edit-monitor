@@ -12,7 +12,7 @@
 
 ## 零. 插件层级 和定位 (Level)
 
-**层级**：[![BASIC](https://img.shields.io/badge/-BASIC-3088d1)]─── [![AGENT](https://img.shields.io/badge/-AGENT-8250df)] <======= [![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706)] =======> [![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)]
+**层级**：![BASIC](https://img.shields.io/badge/-BASIC-3088d1)─── ![AGENT](https://img.shields.io/badge/-AGENT-8250df) <======= ![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706) =======> ![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)
 
 **定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#一-daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#二-api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#三-db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#四-ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#五-skill)
 
