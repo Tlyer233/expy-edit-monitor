@@ -18,15 +18,15 @@
 
 <pre>
 ┌────────────────────┐ ┌───────────────────┐ ┌───────────────────────────────────────────────────────────────┐ ┌────────────────────┐
-│ <font color="darkred"><b>Daemon</b></font>             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
-│ <font color="darkred"><b>1.chat_monitor</b></font>     │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
-│   <font color="darkred"><b>- chat_query</b></font>     │ │                   │ │                                                               │ │                    │
-│   <font color="darkred"><b>- todo_idntity</b></font>   │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
-│ <font color="darkred"><b>2.edit_monitor</b></font>     │ │  - chat(api)      │ │                                                               │ │                    │
-│   <font color="darkred"><b>- edit_query</b></font>     │ │                   │ │                                                               │ │                    │
-│ <font color="darkred"><b>3.siri_daemon</b></font>      │ │ CODEX             │ │                                                               │ │                    │
-│   <font color="darkred"><b>- clean_input</b></font>    │ │  - chat(api)      │ │                                                               │ │                    │
-│   <font color="darkred"><b>- suit_for_talk</b></font>  │ │                   │ │                                                               │ │ WECAHT             │
+│ <mark><b>Daemon</b></mark>             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
+│ <mark><b>1.chat_monitor</b></mark>     │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
+│   <mark><b>- chat_query</b></mark>     │ │                   │ │                                                               │ │                    │
+│   <mark><b>- todo_idntity</b></mark>   │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
+│ <mark><b>2.edit_monitor</b></mark>     │ │  - chat(api)      │ │                                                               │ │                    │
+│   <mark><b>- edit_query</b></mark>     │ │                   │ │                                                               │ │                    │
+│ <mark><b>3.siri_daemon</b></mark>      │ │ CODEX             │ │                                                               │ │                    │
+│   <mark><b>- clean_input</b></mark>    │ │  - chat(api)      │ │                                                               │ │                    │
+│   <mark><b>- suit_for_talk</b></mark>  │ │                   │ │                                                               │ │ WECAHT             │
 │                    │ │ CLAUDE CODE       │ │                                                               │ │                    │
 │ Script             │ │  - chat(api)      │ │                                                               │ │ FEISHU             │
 │ 1.health_monitor   │ │                   │ │                                                               │ │  - daily_summary   │
