@@ -2,13 +2,56 @@
 
 > macOS 内核级文件编辑监控插件 —— 记录每次保存、算 diff、生成 LLM 修改摘要，回答「某天我到底改了什么」。
 
-基于 macOS 内置的 `eslogger`（Endurance Security 事件流，10.15+ 内核级文件事件）内核级事件流，**按应用粒度勾选监控**（PyCharm、WPS Office 等），对命中应用的保存行为做快照、diff、LLM 摘要，持久化到本地 SQLite，并提供 REST API 与 Web 配置界面。内容解析支持普通文本（unified diff）与 Office/PDF 等含图文档（markitdown + 视觉模型），reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等），拓展性极强。是旧版 `5_edit_monitor`（inode 方案）的升级版，核心改进为 **xattr 持久化身份标识**，解决 Office 原子保存（先 create 临时文件再 rename）导致 inode 变化、事件链断裂的问题。
+①基于 macOS 内置的 `eslogger`（Endurance Security 事件流，10.15+ 内核级文件事件）内核级事件流
+②**按应用粒度勾选监控**（PyCharm、WPS Office 等），对命中应用的保存行为做快照、diff、LLM 摘要，持久化到本地 SQLite，并提供 REST API 与 Web 配置界面。
+③内容解析**目前**支持普通文本（unified diff）与 Office/PDF 等含图文档（markitdown + 视觉模型），
+④reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等, 后续会进一步支持），拓展性极强。
+⑤是旧版 `5_edit_monitor`（inode追踪）的升级版，核心改进为 **xattr 持久化身份标识**(魔法标识)，解决 Office / Typora 等应用原子保存（先 create 临时文件再 rename）导致 inode 变化、文件追踪链断裂的问题。
 
 ***
 
-## 一、层级 (Level)
+## 一、插件层级 和定位 (Level)
 
 **BASIC / Daemon 类**（`manifest.json:3` `"category": "BASIC.Daemon"`）
+
+完整应用架构（加粗列为本插件所属的 BASIC.Daemon 层级）：
+
+<pre>
+┌────────────────────┐ ┌───────────────────┐ ┌───────────────────────────────────────────────────────────────┐ ┌────────────────────┐
+│ <b>Daemon</b>             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
+│ <b>1.chat_monitor</b>     │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
+│   <b>- chat_query</b>     │ │                   │ │                                                               │ │                    │
+│   <b>- todo_idntity</b>   │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
+│ <b>2.edit_monitor</b>     │ │  - chat(api)      │ │                                                               │ │                    │
+│   <b>- edit_query</b>     │ │                   │ │                                                               │ │                    │
+│ <b>3.siri_daemon</b>      │ │ CODEX             │ │                                                               │ │                    │
+│   <b>- clean_input</b>    │ │  - chat(api)      │ │                                                               │ │                    │
+│   <b>- suit_for_talk</b>  │ │                   │ │                                                               │ │ WECAHT             │
+│                    │ │ CLAUDE CODE       │ │                                                               │ │                    │
+│ Script             │ │  - chat(api)      │ │                                                               │ │ FEISHU             │
+│ 1.health_monitor   │ │                   │ │                                                               │ │  - daily_summary   │
+│   - health_query   │ │                   │ │                                                               │ │                    │
+│   - health_summary │ │                   │ │                                                               │ │                    │
+│ 2.hisroty_monitor  │ │                   │ │                                                               │ │                    │
+│   - history_query  │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ ├───────────────────────────────────────────────────────────────┤ │                    │
+│                    │ │                   │ │Cron                                                           │ │                    │
+│                    │ │                   │ │        1.todo_operat 2.chat_query 3.todo_identity [2min]      │ │                    │
+│                    │ │                   │ │ HERMES ────────────────────────────────────────────────► MTD  │ │                    │
+│                    │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ │        1.todo_operat 2.health_summary 3.history   [2min]      │ │                    │
+│ ASSIST Daemon      │ │                   │ │ HERMES ──────────────────────────────────────────────► FEISHU │ │                    │
+│ 1.audio_pipline    │ │                   │ │        4.edit_query 5.daily_summary                           │ │                    │
+│ 2.ollama_pipline   │ │                   │ │                                                               │ │                    │
+│                    │ │                   │ │                                                               │ │                    │
+│ OTHER              │ │                   │ │                                                               │ │                    │
+│ - reply_rule       │ │                   │ │                                                               │ │                    │
+│ - feedback_rule    │ │                   │ │                                                               │ │                    │
+│ - think_twice      │ │                   │ │                                                               │ │                    │
+└────────────────────┘ └───────────────────┘ └───────────────────────────────────────────────────────────────┘ └────────────────────┘
+       BASIC                  AGENT                                 SCHEDULE WORK FLOW                                INTERACT
+</pre>
 
 四件套全具备的完整形态插件：
 
