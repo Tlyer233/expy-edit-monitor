@@ -21,49 +21,155 @@
 
 需要! 因为mac的eslogger需要
 
-#### Q2: 为什么需要常驻?
-
-因为需要实时获取数据
+#### Q2: 为什么需要常驻? 哪里需要常驻?
+1. eslogger 是流式事件源，不是查询接口 —— 必须进程活着持续接收 write/rename/create/clone 事件，事件发生当下没人听就 永远丢失
+2. 处理是异步接力 —— 事件不能同步算完 diff（含图修改要 本地模型 llm 来 vision，），必须入队 db 后由 Worker 轮询驱动，进程不在状态机就停摆
+3. 文件快照时机依赖进程存活 —— 修改事件触发瞬间要临时记录文件快照(后面处理完成会删除)，错过即断链
 
 
 
 ## 二. API ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-```md
-1. GET /api/edit_monitor/config
-  - 定位:[内部ui调用,不对外调用]
-  - 作用:读取 `config.json` 完整配置，前端 UI 加载配置用
-  - Method: GET
-  - Parameters: 无
-  - Responses: config 完整对象（JSON）
+#### 1. GET /api/edit_monitor/discovered
+
+**① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
+
+**② Method**：![GET](https://img.shields.io/badge/-GET-61affe)
+
+**③ Parameters**
+
+| 参数       | 位置  | 必填 | 类型   | 说明                     |
+| ---------- | ----- | ---- | ------ | ------------------------ |
+| `app_name` | query | 是   | string | 应用显示名，如 `PyCharm` |
+
+**④ Response**
+
+| 状态 | 参数      | 类型   | 说明 |
+| ----- | --------- | ------ | ---- |
+| ![200](https://img.shields.io/badge/-200-2ea44f) | file_path | string | 文件绝对路径 |
+|       | hit_count | int    | 该文件被命中修改的次数 |
+| ![400](https://img.shields.io/badge/-400-red) | error     | string | 错误原因，如缺少 app_name |
+
+**⑤ 示例（curl）**
+
+```bash
+# 请求：GET /api/edit_monitor/discovered?app_name=PyCharm
+# 参数解释：
+#   app_name: 应用显示名（必填），如 PyCharm，仅返回该应用的修改记录
+curl "http://127.0.0.1:9723/api/edit_monitor/discovered?app_name=PyCharm"
+
+# 成功(200):
+#   [{"file_path": "/Users/you/proj/a.py", "hit_count": 12},
+#    {"file_path": "/Users/you/proj/b.py", "hit_count": 3}]
+# 缺参(400):
+#   {"error": "缺少 app_name"}
 ```
 
-```md
-2. PUT /api/edit_monitor/config
-  - 定位:[内部ui调用,不对外调用]
-  - 作用: 写回 `config.json`（保存后 UI 会触发 daemon 重启生效）
-  - Method: PUT
-  - Parameters: body（完整的新 config 对象，JSON）
-  - Responses: `{"success": true}`；空请求体返回 400 `{"success": false, "error": "空请求体"}`
+**⑥ 备注**：返回平铺数据，树结构由前端构建；`hit_count` = 该文件被命中修改的次数。
+
+
+#### 2. GET /api/edit_monitor/config
+
+**① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
+
+**② Method**：![GET](https://img.shields.io/badge/-GET-61affe)
+
+**③ Parameters**
+
+无
+
+**④ Response**
+
+| 状态 | 参数                | 类型   | 说明 |
+| ----- | ------------------- | ------ | ---- |
+| ![200](https://img.shields.io/badge/-200-2ea44f) | apps               | array  | 监控应用白名单 |
+|       | global_noise_dir   | array  | 全局噪声目录 |
+|       | global_noise_postfix | array | 全局噪声后缀 |
+|       | timezone_offset    | int    | 时区偏移（默认 8） |
+|       | merge_threshold_ms | int    | MERGE 合并时间窗（毫秒） |
+|       | max_file_size_mb   | int    | 快照大小上限（MB） |
+|       | post_llm           | object | LLM 摘要配置 |
+
+**⑤ 示例（curl）**
+
+```bash
+# 请求：GET /api/edit_monitor/config
+# 无参数
+curl "http://127.0.0.1:9723/api/edit_monitor/config"
+
+# 成功(200): 完整 config 对象
+#   {"apps": [{"allow_postfix": [".py"], "app_path": "...", "displayName": "PyCharm", ...}],
+#    "global_noise_dir": [".git", "node_modules"], ...}
 ```
 
-```md
-3. GET /api/edit_monitor/discovered?app_name=
-  - 定位:[内部ui调用,不对外调用]
-  - 作用: 查询指定应用的文件发现记录（平铺数据，树构建交给前端 buildTree.js）
-  - Method: GET
-  - Parameters: `app_name`（必填，应用名）
-  - Responses: `[{file_path, hit_count}]` 平铺列表
+**⑥ 备注**：返回 `config.json` 完整配置，前端 UI 加载用。
+
+#### 3. PUT /api/edit_monitor/config
+
+**① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
+
+**② Method**：![PUT](https://img.shields.io/badge/-PUT-fca130)
+
+**③ Parameters**
+
+| 参数 | 位置 | 必填 | 类型   | 说明 |
+| ----- | ---- | ---- | ------ | ---- |
+| body  | body | 是   | object | 完整的新 config 对象（结构同 GET /config 返回） |
+
+**④ Response**
+
+| 状态 | 参数    | 类型   | 说明 |
+| ----- | ------- | ------ | ---- |
+| ![200](https://img.shields.io/badge/-200-2ea44f) | success | bool   | true |
+| ![400](https://img.shields.io/badge/-400-red)   | success | bool   | false |
+|       | error   | string | 错误原因（空请求体） |
+
+**⑤ 示例（curl）**
+
+```bash
+# 请求：PUT /api/edit_monitor/config
+# 参数解释：
+#   body: 完整新 config 对象（JSON），需包含 apps/global_noise_dir 等全部字段
+curl -X PUT "http://127.0.0.1:9723/api/edit_monitor/config" \
+  -H "Content-Type: application/json" \
+  -d '{"apps": [], "global_noise_dir": [".git"], "timezone_offset": 8, "merge_threshold_ms": 6000, "max_file_size_mb": 5, "post_llm": {"enable": true, "model": "qwen/qwen3-vl-4b@q4_k_m"}}'
+
+# 成功(200): {"success": true}
+# 空体(400): {"success": false, "error": "空请求体"}
 ```
 
-```md
-4. GET /api/edit_monitor/mac_apps
-  - 定位:[内部ui调用,不对外调用]
-  - 作用: 扫描本机 `/Applications`、`/System/Applications`、`~/Applications` 下的 `.app`，供「+ 添加应用」弹层选择
-  - Method: GET
-  - Parameters: 无
-  - Responses: `[{name, exec_path}]` 列表（去重、按名称排序）
+**⑥ 备注**：写回 `config.json`，保存后 UI 会触发 daemon 重启生效。
+
+#### 4. GET /api/edit_monitor/mac_apps
+
+**① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
+
+**② Method**：![GET](https://img.shields.io/badge/-GET-61affe)
+
+**③ Parameters**
+
+无
+
+**④ Response**
+
+| 状态 | 参数      | 类型   | 说明 |
+| ----- | --------- | ------ | ---- |
+| ![200](https://img.shields.io/badge/-200-2ea44f) | name      | string | App 显示名 |
+|       | exec_path | string | 可执行文件完整路径 |
+
+**⑤ 示例（curl）**
+
+```bash
+# 请求：GET /api/edit_monitor/mac_apps
+# 无参数
+curl "http://127.0.0.1:9723/api/edit_monitor/mac_apps"
+
+# 成功(200):
+#   [{"name": "PyCharm", "exec_path": "/Applications/PyCharm.app/Contents/MacOS/pycharm"},
+#    {"name": "TextEdit", "exec_path": "/System/Applications/TextEdit.app/Contents/MacOS/TextEdit"}, ...]
 ```
+
+**⑥ 备注**：扫描 `/Applications`、`/System/Applications`、`~/Applications` 下的 `.app`，按名称排序、按 exec_path 去重。
 
 ## 三. DB ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
