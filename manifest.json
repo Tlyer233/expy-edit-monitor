@@ -1,0 +1,30 @@
+{
+  "name": "edit_monitor",
+  "category": "BASIC.Daemon",
+  "displayName": "文件编辑监控",
+  "icon": "file-edit",
+  "route": "/edit-monitor",
+
+  "daemon": { "sudo": true, "entry": "main.py" },
+
+  "logs": { "dir": "log" },
+
+  "ui": { "entry": "index.html" },
+
+  "api": {
+    "module": "api.router",
+    "attr": "router"
+  },
+
+  "sidebars": [ ],
+
+  "dependencies": {
+    "platform": [ "darwin" ],
+    "python": "requirements.txt",
+    "env_check": "env_check.py"
+  },
+
+  "skills": [
+    "skills/file_edit_query"
+  ]
+}

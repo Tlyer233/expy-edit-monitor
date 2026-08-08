@@ -1,0 +1,5 @@
+loguru
+requests
+typing_extensions
+markitdown[docx,xlsx,xls,pptx,pdf]>=0.1.7
+pdfplumber

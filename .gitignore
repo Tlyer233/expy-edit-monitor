@@ -1,0 +1,9 @@
+log/
+data/
+__pycache__/
+*.pyc
+ref/
+config.json
+node_modules/
+.DS_Store
+*.local

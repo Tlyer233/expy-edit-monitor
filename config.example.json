@@ -1,0 +1,31 @@
+{
+  "apps": [
+    {
+      "allow_postfix": [ ".py", ".js", ".ts", ".jsx", ".tsx", ".json", ".md", ".html", ".css", ".yaml", ".yml", ".xml", ".sh", ".sql", ".go", ".rs", ".java", ".c", ".cpp", ".h", ".rb", ".php", ".swift", ".toml", ".cfg", ".ini", ".env" ],
+      "app_path": "/Applications/PyCharm.app/Contents/MacOS/pycharm",
+      "displayName": "PyCharm",
+      "enabled": true,
+      "fileignore": [ ".idea/*", "__pycache__/*", "*.log" ],
+      "is_delete": false
+    },
+    {
+      "allow_postfix": [ ".docx", ".xlsx", ".pptx", ".doc", ".xls", ".ppt", ".pdf" ],
+      "app_path": "/Applications/wpsoffice.app/Contents/MacOS/wpsoffice",
+      "displayName": "WPS Office",
+      "enabled": true,
+      "fileignore": [ ".~*" ],
+      "is_delete": false
+    }
+  ],
+  "global_noise_dir": [ ".git", "__pycache__", ".DS_Store", "node_modules", ".venv", "venv", "dist", "build", ".idea" ],
+  "global_noise_postfix": [ "~$*", "*.sb-*", "*~", "*.db" ],
+  "timezone_offset": 8,
+  "merge_threshold_ms": 6000,
+  "max_file_size_mb": 5,
+  "post_llm": {
+    "enable": true,
+    "plain_diff_prompt": "你是一个资深代码审查员。以下是一个 unified diff，请用一句话总结用户对代码做了哪些修改，只讲做了什么、不讲为什么。如果修改了多个地方，用分号分隔。",
+    "llm_diff_prompt": "你是一个资深diff审查员。diff中 [IMG] 图片占位符后面的 DESC: 是系统对该图片的自动描述，不是用户编辑的内容。请用一句话总结用户对文档做了什么修改，只讲做了什么、不讲为什么。如果修改了多个地方，用分号分隔。",
+    "model": "qwen/qwen3-vl-4b@q4_k_m"
+  }
+}
