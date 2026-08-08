@@ -1,5 +1,8 @@
 # 文件编辑监控 (edit\_monitor)
 
+**层级**：![BASIC](https://img.shields.io/badge/-BASIC-3088d1)![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)─── ![AGENT](https://img.shields.io/badge/-AGENT-8250df) <======= ![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706) =======> ![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)
+**定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#一-daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#二-api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#三-db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#四-ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#五-skill)
+
 > macOS 内核级文件编辑监控插件 —— 记录每次保存、算 diff、生成 LLM 修改摘要，回答「某天我到底改了什么」。
 
 ①基于 macOS 内置的 `eslogger`（Endurance Security 事件流，10.15+ 内核级文件事件）内核级事件流
@@ -7,14 +10,6 @@
 ③内容解析**目前**支持普通文本（unified diff）与 Office/PDF 等含图文档（markitdown + 视觉模型），
 ④reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等, 后续会进一步支持），拓展性极强。
 ⑤是旧版 `5_edit_monitor`（inode追踪）的升级版，核心改进为 **xattr 持久化身份标识**(魔法标识)，解决 Office / Typora 等应用原子保存（先 create 临时文件再 rename）导致 inode 变化、文件追踪链断裂的问题。
-
-***
-
-## 零. 插件层级 和定位 (Level)
-
-**层级**：![BASIC](https://img.shields.io/badge/-BASIC-3088d1)─── ![AGENT](https://img.shields.io/badge/-AGENT-8250df) <======= ![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706) =======> ![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)
-
-**定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#一-daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#二-api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#三-db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#四-ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#五-skill)
 
 ## 一. Daemon
 
