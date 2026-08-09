@@ -26,11 +26,9 @@
 2. 处理是异步接力 —— 事件不能同步算完 diff（含图修改要 本地模型 llm 来 vision，），必须入队 db 后由 Worker 轮询驱动，进程不在状态机就停摆
 3. 文件快照时机依赖进程存活 —— 修改事件触发瞬间要临时记录文件快照(后面处理完成会删除)，错过即断链
 
-
-
 ## 二. API ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-#### 1. GET /api/edit_monitor/discovered
+#### 1/4. GET /api/edit_monitor/discovered
 
 **① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
 
@@ -69,7 +67,7 @@ curl "http://127.0.0.1:9723/api/edit_monitor/discovered?app_name=PyCharm"
 
 ---
 
-#### 2. GET /api/edit_monitor/config
+#### 2/4. GET /api/edit_monitor/config
 
 **① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
 
@@ -107,7 +105,7 @@ curl "http://127.0.0.1:9723/api/edit_monitor/config"
 
 ---
 
-#### 3. PUT /api/edit_monitor/config
+#### 3/4. PUT /api/edit_monitor/config
 
 **① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
 
@@ -129,10 +127,34 @@ curl "http://127.0.0.1:9723/api/edit_monitor/config"
 
 **⑤ 示例（curl）**
 
+**1. GET — 查询**
+
+```bash
+# 请求：GET /api/edit_monitor/discovered?app_name=PyCharm
+# 参数解释：
+#   app_name: 应用显示名（必填），仅返回该应用的修改记录
+curl "http://127.0.0.1:9723/api/edit_monitor/discovered?app_name=PyCharm"
+```
+
+**2. POST — 创建**
+
+```bash
+# 请求：POST /api/mtd/tasklists/{listId}/tasks
+# 参数解释：
+#   listId: 任务列表 ID（路径）
+#   title: 任务标题（必填）
+#   dueDateTime: 截止时间，需 {dateTime + timeZone} 结构
+curl -X POST "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "写周报", "dueDateTime": {"dateTime": "2026-08-05T18:00:00", "timeZone": "Asia/Shanghai"}}'
+```
+
+**3. PUT — 整体替换**
+
 ```bash
 # 请求：PUT /api/edit_monitor/config
 # 参数解释：
-#   body: 完整新 config 对象（JSON），需包含 apps/global_noise_dir 等全部字段
+#   body: 完整新 config 对象（JSON），缺字段将被覆盖为空
 curl -X PUT "http://127.0.0.1:9723/api/edit_monitor/config" \
   -H "Content-Type: application/json" \
   -d '{"apps": [], "global_noise_dir": [".git"], "timezone_offset": 8, "merge_threshold_ms": 6000, "max_file_size_mb": 5, "post_llm": {"enable": true, "model": "qwen/qwen3-vl-4b@q4_k_m"}}'
@@ -141,11 +163,32 @@ curl -X PUT "http://127.0.0.1:9723/api/edit_monitor/config" \
 # 空体(400): {"success": false, "error": "空请求体"}
 ```
 
+**4. PATCH — 部分更新**
+
+```bash
+# 请求：PATCH /api/mtd/tasklists/{listId}/tasks/{taskId}
+# 参数解释：
+#   listId/taskId: 列表 ID / 任务 ID（路径）
+#   status: 只更新该字段，其余保持不变
+curl -X PATCH "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks/{taskId}" \
+  -H "Content-Type: application/json" \
+  -d '{"status": "completed"}'
+```
+
+**5. DELETE — 删除**
+
+```bash
+# 请求：DELETE /api/mtd/tasklists/{listId}/tasks/{taskId}
+# 参数解释：
+#   listId/taskId: 列表 ID / 任务 ID（路径）
+curl -X DELETE "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks/{taskId}"
+```
+
 **⑥ 备注**：写回 `config.json`，保存后 UI 会触发 daemon 重启生效。
 
 ---
 
-#### 4. GET /api/edit_monitor/mac_apps
+#### 4/4. GET /api/edit_monitor/mac_apps
 
 **① 定位**：![前端UI ✓](https://img.shields.io/badge/前端UI-%E2%9C%93-2ea44f) ![其他插件 ✗](https://img.shields.io/badge/其他插件-%E2%9C%97-red) ![能力暴露 ✗](https://img.shields.io/badge/能力暴露-%E2%9C%97-red)
 
@@ -178,7 +221,9 @@ curl "http://127.0.0.1:9723/api/edit_monitor/mac_apps"
 
 ## 三. DB ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-- `file_events.db` 包含两张表：
+> 
+
+#### 1/1. `file_events.db` 包含两张表：
 
 ```sql
 CREATE TABLE IF NOT EXISTS meta (
@@ -206,9 +251,12 @@ CREATE TABLE IF NOT EXISTS event (
 );
 ```
 
-#### 重要字段解析
+##### 整体分析
 
-- 整体分析：meta 表存每个文件的元信息（一行一个文件）；该文件的所有编辑记录在 event 表，通过 `ref_meta` 关联
+meta 表存每个文件的元信息；该文件的所有编辑记录在 event 表，通过 `ref_meta` 关联
+
+##### 重要字段解析
+
 - `event.status`（状态机，由两个 Worker 接力驱动）：
   - ① `diffing`：已入队，缺 `diff` 字段，Worker A — Diff Worker 抓取此状态
   - ② `descing`：已有 `diff`，缺 `diff_des` 字段，Worker B — Desc Worker 抓取此状态
