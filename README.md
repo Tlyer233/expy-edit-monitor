@@ -113,9 +113,15 @@ curl "http://127.0.0.1:9723/api/edit_monitor/config"
 
 **③ Parameters**
 
-| 参数 | 位置 | 必填 | 类型   | 说明 |
-| ----- | ---- | ---- | ------ | ---- |
-| body  | body | 是   | object | 完整的新 config 对象（结构同 GET /config 返回） |
+| 参数                      | 位置 | 必填 | 类型   | 说明 |
+| ------------------------- | ---- | ---- | ------ | ---- |
+| `body.apps`               | body | 是   | array  | 监控应用白名单 |
+| `body.global_noise_dir`   | body | 否   | array  | 全局噪声目录 |
+| `body.global_noise_postfix` | body | 否 | array | 全局噪声后缀 |
+| `body.timezone_offset`    | body | 否   | int    | 时区偏移（默认 8） |
+| `body.merge_threshold_ms` | body | 否   | int    | MERGE 合并时间窗（毫秒） |
+| `body.max_file_size_mb`   | body | 否   | int    | 快照大小上限（MB） |
+| `body.post_llm`           | body | 否   | object | LLM 摘要配置 |
 
 **④ Response**
 
@@ -127,61 +133,22 @@ curl "http://127.0.0.1:9723/api/edit_monitor/config"
 
 **⑤ 示例（curl）**
 
-**1. GET — 查询**
-
-```bash
-# 请求：GET /api/edit_monitor/discovered?app_name=PyCharm
-# 参数解释：
-#   app_name: 应用显示名（必填），仅返回该应用的修改记录
-curl "http://127.0.0.1:9723/api/edit_monitor/discovered?app_name=PyCharm"
-```
-
-**2. POST — 创建**
-
-```bash
-# 请求：POST /api/mtd/tasklists/{listId}/tasks
-# 参数解释：
-#   listId: 任务列表 ID（路径）
-#   title: 任务标题（必填）
-#   dueDateTime: 截止时间，需 {dateTime + timeZone} 结构
-curl -X POST "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "写周报", "dueDateTime": {"dateTime": "2026-08-05T18:00:00", "timeZone": "Asia/Shanghai"}}'
-```
-
-**3. PUT — 整体替换**
-
 ```bash
 # 请求：PUT /api/edit_monitor/config
-# 参数解释：
-#   body: 完整新 config 对象（JSON），缺字段将被覆盖为空
+# 参数解释（body 各字段，缺字段将被覆盖为空）：
+#   body.apps:                array   监控应用白名单（必填）
+#   body.global_noise_dir:    array   全局噪声目录
+#   body.global_noise_postfix: array  全局噪声后缀
+#   body.timezone_offset:     int     时区偏移（默认 8）
+#   body.merge_threshold_ms:  int     MERGE 合并时间窗（毫秒）
+#   body.max_file_size_mb:    int     快照大小上限（MB）
+#   body.post_llm:            object  LLM 摘要配置
 curl -X PUT "http://127.0.0.1:9723/api/edit_monitor/config" \
   -H "Content-Type: application/json" \
   -d '{"apps": [], "global_noise_dir": [".git"], "timezone_offset": 8, "merge_threshold_ms": 6000, "max_file_size_mb": 5, "post_llm": {"enable": true, "model": "qwen/qwen3-vl-4b@q4_k_m"}}'
 
 # 成功(200): {"success": true}
 # 空体(400): {"success": false, "error": "空请求体"}
-```
-
-**4. PATCH — 部分更新**
-
-```bash
-# 请求：PATCH /api/mtd/tasklists/{listId}/tasks/{taskId}
-# 参数解释：
-#   listId/taskId: 列表 ID / 任务 ID（路径）
-#   status: 只更新该字段，其余保持不变
-curl -X PATCH "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks/{taskId}" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "completed"}'
-```
-
-**5. DELETE — 删除**
-
-```bash
-# 请求：DELETE /api/mtd/tasklists/{listId}/tasks/{taskId}
-# 参数解释：
-#   listId/taskId: 列表 ID / 任务 ID（路径）
-curl -X DELETE "http://127.0.0.1:9723/api/mtd/tasklists/{listId}/tasks/{taskId}"
 ```
 
 **⑥ 备注**：写回 `config.json`，保存后 UI 会触发 daemon 重启生效。
@@ -220,8 +187,6 @@ curl "http://127.0.0.1:9723/api/edit_monitor/mac_apps"
 **⑥ 备注**：扫描 `/Applications`、`/System/Applications`、`~/Applications` 下的 `.app`，按名称排序、按 exec_path 去重。
 
 ## 三. DB ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
-
-> 
 
 #### 1/1. `file_events.db` 包含两张表：
 
@@ -268,12 +233,6 @@ meta 表存每个文件的元信息；该文件的所有编辑记录在 event �
 
 ## 四. UI ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
-
-由宿主以 **iframe** 加载（`manifest.json:12` `ui.entry=index.html`），支持明暗双主题（CSS 变量 + `html.dark` 切换）。
-
-主要功能：
-
 - **应用侧栏**：已配置应用列表，`enabled` 开关一键启停，支持添加 / 移除本机 App
 - **主面板**：应用详情 + 「文件后缀 / 忽略规则」标签编辑器
 - **文件树**：某应用发现过的文件树（前端 `buildTree.js` 自建），支持忽略规则过滤与刷新
@@ -283,67 +242,18 @@ React 19 + Vite 6 + Tailwind CSS v4 + Zustand 5（`ui/package.json`）。
 
 ## 五. SKILL ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
-**`skills/file_edit_query`**（351 行 SKILL.md，`manifest.json:27-29`）
+#### 1/1. file_edit_query 
 
-面向 Agent（Hermes 等）的查询 skill：直接读 `data/file_events.db`，回答「某天做了什么 / 哪些文件被修改过」，并从原始编辑数据提炼「主任务 + 子任务」的当日工作总结。
+TODO: 维护中.... 就算读db,skill里面路径也不应该写死, 应该api暴露db文件的路径
 
-- **两阶段流程**：Phase 1 查询（8 个 SQL 模板：按天 / 按应用 / 去重文件 / 项目分布 / 迭代追踪等）→ Phase 2 分析（观察 → 过滤噪声 → 归并主任务 → 提炼子任务 → 反问验证）
-- **两种输出**：标准表格模式（主任务/分组/投入时段 + 子任务表）与快速语音模式（口语化总结）
-- 内置噪声过滤速查表、合并规则、Pitfalls（如 `diff_des` 可能为 NULL、`mode=llm` 的 diff 含 `[[IMG]] DESC:` 占位符）
+面向 Agent（Hermes 等）的查询 skill —— 直接读 `data/file_events.db`，回答「某天做了什么 / 哪些文件被修改过」，并提炼「主任务 + 子任务」当日总结。
 
+- **直读 db，不走 API**：skill 直接用 SQL 查 `file_events.db`，比封装 API 更灵活
+- **两阶段流程**：Phase 1 查询（8 个 SQL 模板）→ Phase 2 分析（观察 → 过滤噪声 → 归并 → 提炼 → 反问验证）
+- **两种输出**：标准表格模式 / 快速语音模式
+- **噪声过滤**：内置过滤速查表 + 合并规则 + Pitfalls（如 `diff_des` 为 NULL、`[[IMG]] DESC:` 占位符）
 
-
-## 七、整体架构
-
-```
-main.py               Daemon 入口：root 校验 → 起 Worker A/B 线程 → 起 eslogger → 主事件循环
-core/eslistener.py    5 层 verify 过滤 + deal_mid 身份判定 + MERGE/NEW（主线程调用）
-core/diff_worker.py   Worker A：轮询 status='diffing' → 算 diff → 'descing'
-core/desc_worker.py   Worker B：轮询 status='descing' → 投递 LLM → 'done'
-db/repository.py      SQLite：meta + event 两表 CRUD + 轮询/聚合查询
-reader/               planin.py（纯文本 unified diff）/ with_image.py（markitdown + vision）
-common/               logger / utils（config 读写）/ xattr（mid 读写）
-api/router.py         FastAPI 路由（config / discovered / mac_apps）
-ui/                   React 配置界面（iframe）
-skills/file_edit_query  Agent 查询 skill
-```
-
-**端到端数据流**（三线程通过 `event.status` 状态机接力）：
-
-```
-eslogger 内核事件(JSON)
-  → main.py 解析（_extract_path、UTC→本地时间）
-  → eslistener.handle_file_event
-      ① 跳过目录  ② 5 层 verify：应用匹配→全局噪声→per-app 后缀/忽略→2s 防抖
-      ③ deal_mid 身份判定（首次 / 重命名复制 / MERGE·NEW）
-      ④ 快照 copy2 到 data/tmp/ → insert_event(status='diffing')
-  → diff_worker 每 1s 轮询：读快照 → 算 diff → 回填 diff/mode → 'descing'（删快照）
-       · plain: difflib.unified_diff 新旧全文
-       · llm: markitdown 提取 → 图片 [[IMG:md5]] 占位 → vision 描述 → 骨架 diff
-  → desc_worker 每 1s 轮询：按 mode 选 prompt → POST /lms/task → 'done'
-  → 7_lms_daemon 异步把摘要写回 event.diff_des
-  → UI / API / Skill 侧查询
-```
-
-***
-
-## 八、实现思路 (Key Design)
-
-1. **xattr 魔法 ID 身份追踪**（核心）：`common/xattr.py` 用固定 key `expy.edit.monitor` 读写 xattr。Finder 注释 xattr 在「Office 原子保存 / 重命名 / 移动 / 复制」时均保留，可作为跨 inode 的稳定身份。`deal_mid` 三分支：首次→生成新 UUID；重命名/复制→分配新 mid（副本获得独立身份，天然去重）；正常→判 MERGE / NEW。
-2. **MERGE / NEW 判定**：同应用 + 上条事件 `diff_des` 未关闭 + 时间差 ≤ `merge_threshold_ms`（默认 6000ms）→ MERGE 只延长 `et`（禁止回填 file\_path）；否则 NEW 建快照。
-3. **快照机制**：事件发生时立即 `shutil.copy2` 到 `data/tmp/` 并 `chmod 0644`（root 复制的快照需放行其他用户进程读取），Worker A 算完即删。大小上限 5MB。
-4. **含图文档（Office/PDF）**：markitdown 转换 + 图片 `[[IMG:md5]]` 占位符（md5 判同图），`meta.content` 存「骨架 + 图片描述 json」，同 md5 复用旧描述、新图才调 vision（同步 130s 超时）。
-5. **防抖**：对 `(进程, 文件路径)` 组合 2 秒内存级去重，避免一次保存触发多条事件。
-6. **时区**：eslogger 输出 UTC，统一加 `timezone_offset`（默认 8）转本地存储。
-7. **日志双轨**：daemon 侧全局 loguru（`log/` 按天滚动 30 天），api 侧独立 logger 实例，避免壳子多插件间 loguru 污染。
-
-***
-
-<br />
-
-***
-
-## 配置 (config.json)
+## 六. Config ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 ```json
 {
@@ -401,65 +311,123 @@ eslogger 内核事件(JSON)
 }
 ```
 
-***
+## 七. 整体架构 + 实现思路
 
-## 目录结构
+#### 文件树
 
 ```
 5_edit_monitor_magic/
-├── main.py               # Daemon 入口（root 校验 → Worker A/B → eslogger → 事件循环）
-├── manifest.json         # 插件元数据（宿主识别唯一依据）
-├── config.json           # 监控配置
-├── env_check.py          # 部署前环境检测
-├── api/router.py         # FastAPI 路由（config / discovered / mac_apps）
-├── common/               # logger / utils / xattr / office_reader
-├── core/                 # eslistener（verify+deal_mid）/ diff_worker / desc_worker
-├── db/repository.py      # SQLite meta + event 两表
-├── reader/               # planin（纯文本 diff）/ with_image（markitdown+vision）
-├── skills/file_edit_query/SKILL.md   # Agent 查询 skill
-├── ui/                   # React 配置界面（构建产物经宿主 iframe 加载）
-├── data/                 # file_events.db + 事件快照 tmp/
-└── log/                  # 按天滚动日志
+├── main.py                    # Daemon 入口：root 校验 → 起 Worker A/B → eslogger → 事件循环
+├── manifest.json              # 插件元数据（壳子识别唯一依据）
+├── config.json                # 插件自己配置
+├── env_check.py               # 部署前环境检测
+├── requirements.txt           # Python 依赖
+├── api/
+│   └── router.py              # FastAPI 路由（config / discovered / mac_apps）
+├── common/
+│   ├── logger.py              # 日志（独立 loguru 实例）
+│   ├── utils.py               # config 读写工具
+│   └── xattr.py               # xattr mid 读写（魔法标识）
+├── core/
+│   ├── eslistener.py          # 5 层 verify 过滤 + deal_mid 身份判定 + MERGE/NEW
+│   ├── diff_worker.py         # Worker A：轮询 diffing → 算 diff → descing
+│   └── desc_worker.py         # Worker B：轮询 descing → 投递 LLM → done
+├── db/
+│   └── repository.py          # SQLite meta + event 两表 CRUD + 聚合查询
+├── reader/
+│   ├── planin.py              # 纯文本阅读器: unified diff
+│   └── with_image.py          # Office/PD阅读器: markitdown + vision（[[IMG]] 占位）
+├── skills/
+│   └── file_edit_query/
+│       └── SKILL.md           # Agent 查询 skill（直读 db，两阶段总结）
+└── ui/
+    ├── package.json           
+    ├── vite.config.js         
+    ├── index.html             # 入口 HTML
+    ├── dist/                  # 构建产物（壳子 iframe 加载）
+    └── src/
+        ├── main.jsx           
+        ├── index.css          # 全局样式(暗色/亮色)
+        ├── components/
+        │   └── ui/            # shdcn基础组件（button/dialog/input/switch/tabs）
+        ├── lib/
+        │   └── utils.js       
+        └── pages/
+            ├── EditMonitorPage.jsx       # 页面入口
+            └── edit-monitor/
+                ├── Sidebar.jsx           # 应用侧栏
+                ├── MainPanel.jsx         # 主面板（后缀/忽略规则）
+                ├── FileTree.jsx          # 文件树
+                ├── store.js              # Zustand 状态
+                ├── constants.js          # 常量
+                ├── components/           # 弹层/标签等子组件
+                └── utils/
+                    ├── buildTree.js      # 前端树构建
+                    └── fileignore.js     # 忽略规则匹配
 ```
+
+#### 架构数据流
+
+> **端到端数据流**（三线程通过 `event.status` 状态机接力）：
+
+```
+主线程（eslogger 监听）
+  → 收到事件
+  → [verify 5 层] ①应用匹配 → ②全局噪声后缀 → ③全局噪声目录 → ④per-app 后缀/忽略 → ⑤防抖(2s)
+  → 产出 file_path + proc_full
+  → deal_mid(mid):
+      ├─ mid 未命中 DB → [首次] xattr 写新 mid + insert_meta → 递归
+      ├─ mid√ file_path× → [重命名/复制] xattr 写新 mid + update_meta(mid, file_path) → 递归
+      └─ mid√ file_path√ → 判 MERGE / NEW:
+            ├─ 同应用 + diff_des 未关闭 + 时间差≤merge_ms → [MERGE] 仅延长 et
+            └─ 否则 → 建快照 → [NEW] insert_event(status=diffing)
+
+Worker A — Diff Worker（轮询 status=diffing → 目标: 填充 diff + mode）
+  → 读快照 newContent + 查 meta 旧内容
+  → reader 按后缀分发:
+      ├─ planin      → difflib.unified_diff, mode=plain
+      └─ with_image  → markitdown + vision(同步阻塞调 7_lms /lms/task_sync, 130s 超时), mode=llm   [失败→failed]
+  → 回填 diff + mode → status=descing
+  → 更新 meta(content, updated_at)（不更新 file_path）
+  → 删快照
+
+Worker B — Desc Worker（轮询 status=descing → 目标: 投递 LLM）
+  → 按 mode 选 prompt → POST /lms/task 投递      [失败→failed]
+  → descing → done（投递成功即 done，LLM 结果由 7_lms_daemon 异步回填 diff_des）
+```
+
+**运行细节**（主图省略的实现要点）：
+
+```
+- 快照:[NEW] 时 copy2 到 data/tmp/ + chmod 0644（root 复制的快照需放行其他进程读）; 复制失败 → status=failed
+- 大小上限: 文件 > max_file_size_mb（默认 5MB）直接跳过, 不产生事件
+- enable=false: Worker B 跳过投递直接 done（diff_des 留空）
+- 空 diff:   Worker B 直接 done（避免投递 400 → failed）
+- MERGE 条件: 同应用 + 上条事件 diff_des 为空 + 时间差 ≤ merge_threshold_ms
+```
+
+***
+
+## 八. Key Design
+
+#### 1/2. xattr 持久化身份标识（魔法标识🔮）
+> 给每个被监控文件打一个「跨 inode 不变」的身份标签，解决原子保存导致的追踪断链。
+
+   - **是什么**：macOS 文件系统的扩展属性（Extended Attributes，`xattr -l 文件` 可查看）—— 挂在文件 inode 上的 key-value 元数据，如 Finder 注释等都属于 xattr。本插件用固定 key `expy.edit.monitor` 存一个 UUID（`common/xattr.py`）。
+   - **生命周期**：xattr 随 inode 走 —— 重命名 / 移动 / 修改内容**不变**；删除文件则随 inode **消失**；复制（Finder、`cp -p`）会**保留**到新文件。
+   - **Office / Typora 的原子保存**：修改文件后触发保存时，先把原文件**复制**成临时文件（`copy` 保留 xattr，mid 随之复制），在临时文件上写新内容，再 `rename` 原子覆盖原文件—— 任一时刻文件要么是完整旧版、要么是完整新版，防写一半崩溃损坏；代价是 **inode 被替换**（旧版 inode 追踪方案因此断链），但 xattr/mid(魔法标识) 因复制而保留。
+   - **为什么能保留**：原子保存会把原文件的 xattr/mid（魔法标识）带到新 inode，所以路径不变、mid 不变、追踪链不断。
+
+#### 1/2. 含图文件(docx, ppt, pdf....📃)
+
+>  全文按「骨架 + 图片描述」两段处理。
+
+4. **内容提取**：PDF 用 `pdfplumber` 逐页转为png => base64 ；docx/pptx/xlsx 用 `markitdown` 转换（`keep_data_uris=True` 保留base64）。
+5. **骨架占位符**：所有 `![](data:image/...;base64,xxx)` 替换为 `[[IMG:md5]]`（b64→md5，同图必同 md5，用于判同图）。
+6. **描述复用**：`meta.content` 存「骨架 + `DESC_SEP` 界定符 + 骨架中图片描述 json」；本次图片 md5 命中旧描述 → 直接复用（省 LLM）；新图 → `_vision` 同步调 本地LLM 生成描述。
+7. **diff 生成**：旧骨架 vs 新骨架（含占位符）做 unified diff，再在 diff 内把 `[[IMG:md5]]` 注入 `DESC:描述`（换行转义为字面 `\n` 防 diff 行被拆断；被删除的图用旧描述兜底）。最终 `meta.content` = 新骨架 + 全量描述 json，供下次解析复用。
 
 ## License
 
 MIT
-
-
-
-## 架构
-
-```
-┌────────────────────┐ ┌───────────────────┐ ┌───────────────────────────────────────────────────────────────┐ ┌────────────────────┐
-│ Daemon             │ │ HERMES AGENT      │ │Normal                                                         │ │ Mincorsoft TO DO   │
-│ 后台常驻插件,适用于   │ │  - chat(api)      │ │              1.clean_input             2. suit_for_talk       │ │  - todo_operat     │
-│ 需要实时获取最新数据  │ │                   │ │ HERMES ◄──────────────────────────────────────────────── SIRI │ │                    │
-│ 的插件  │ │ OPENCLAW          │ │                                                               │ │ SIRI               │
-│ 2.edit_monitor     │ │  - chat(api)      │ │                                                               │ │                    │
-│   - edit_query     │ │                   │ │                                                               │ │                    │
-│ 3.siri_daemon      │ │ CODEX             │ │                                                               │ │                    │
-│   - clean_input    │ │  - chat(api)      │ │                                                               │ │ WECAHT             │
-│   - suit_for_talk  │ │                   │ │                                                               │ │                    │
-│                    │ │ CLAUDE CODE       │ │                                                               │ │ FEISHU             │
-│ Script             │ │  - chat(api)      │ │                                                               │ │  - daily_summary   │
-│ 1.health_monitor   │ │                   │ │                                                               │ │                    │
-│   - health_query   │ │                   │ │                                                               │ │                    │
-│   - health_summary │ │                   │ ├───────────────────────────────────────────────────────────────┤ │                    │
-│ 2.hisroty_monitor  │ │                   │ │Cron                                                           │ │                    │
-│   - history_query  │ │                   │ │        1.todo_operat 2.chat_query 3.todo_identity [2min]      │ │                    │
-│                    │ │                   │ │ HERMES ────────────────────────────────────────────────► MTD  │ │                    │
-│                    │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ │        1.todo_operat 2.health_summary 3.history   [2min]      │ │                    │
-│ ASSIST Daemon      │ │                   │ │ HERMES ──────────────────────────────────────────────► FEISHU │ │                    │
-│ 1.audio_pipline    │ │                   │ │        4.edit_query 5.daily_summary                           │ │                    │
-│ 2.ollama_pipline   │ │                   │ │                                                               │ │                    │
-│                    │ │                   │ │                                                               │ │                    │
-│ OTHER              │ │                   │ │                                                               │ │                    │
-│ - reply_rule       │ │                   │ │                                                               │ │                    │
-│ - feedback_rule    │ │                   │ │                                                               │ │                    │
-│ - think_twice      │ │                   │ │                                                               │ │                    │
-└────────────────────┘ └───────────────────┘ └───────────────────────────────────────────────────────────────┘ └────────────────────┘
-       BASIC                  AGENT                                 SCHEDULE WORK FLOW                                INTERACT       
-```
 
