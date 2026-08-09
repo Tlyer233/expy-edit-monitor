@@ -2,7 +2,7 @@
 
 **层级**：![BASIC](https://img.shields.io/badge/-BASIC-3088d1)![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)─── ![AGENT](https://img.shields.io/badge/-AGENT-8250df) <======= ![WorkFlow](https://img.shields.io/badge/-WorkFlow-d97706) =======> ![INTERACT](https://img.shields.io/badge/-INTERACT-2ea44f)
 
-**定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#一-daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#二-api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#三-db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#四-ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#五-skill)
+**定位**：[![daemon](https://img.shields.io/badge/daemon-%E2%9C%93-2ea44f)](#daemon) [![api](https://img.shields.io/badge/api-%E2%9C%93-2ea44f)](#api) [![db](https://img.shields.io/badge/db-%E2%9C%93-2ea44f)](#db) [![ui](https://img.shields.io/badge/ui-%E2%9C%93-2ea44f)](#ui) [![skills](https://img.shields.io/badge/skills-%E2%9C%93-2ea44f)](#skills)
 
 > macOS 内核级文件编辑监控插件 —— 记录每次保存、算 diff、生成 LLM 修改摘要，回答「某天我到底改了什么」。
 
@@ -15,6 +15,8 @@
 4. reader 按文件类型自由扩展（PS 导出文件、PR 视频工程等, 后续会进一步支持），拓展性极强。
 5. 是旧版 `5_edit_monitor`（inode追踪）的升级版，核心改进为 **xattr 持久化身份标识**(魔法标识)，解决 Office / Typora 等应用原子保存（先 create 临时文件再 rename）导致 inode 变化、文件追踪链断裂的问题。
 
+<a id="daemon"></a>
+
 ## 一. Daemon ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 #### Q1: 是否需要sudo?
@@ -25,6 +27,8 @@
 1. eslogger 是流式事件源，不是查询接口 —— 必须进程活着持续接收 write/rename/create/clone 事件，事件发生当下没人听就 永远丢失
 2. 处理是异步接力 —— 事件不能同步算完 diff（含图修改要 本地模型 llm 来 vision，），必须入队 db 后由 Worker 轮询驱动，进程不在状态机就停摆
 3. 文件快照时机依赖进程存活 —— 修改事件触发瞬间要临时记录文件快照(后面处理完成会删除)，错过即断链
+
+<a id="api"></a>
 
 ## 二. API ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
@@ -186,6 +190,8 @@ curl "http://127.0.0.1:9723/api/edit_monitor/mac_apps"
 
 **⑥ 备注**：扫描 `/Applications`、`/System/Applications`、`~/Applications` 下的 `.app`，按名称排序、按 exec_path 去重。
 
+<a id="db"></a>
+
 ## 三. DB ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 #### 1/1. `file_events.db` 包含两张表：
@@ -231,6 +237,8 @@ meta 表存每个文件的元信息；该文件的所有编辑记录在 event �
 - `event.diff_des`：对 `event.diff` 的自然语言描述（由本地 LLM 生成）
 - `meta.mid`：所有被监控文件都带有 `expy.edit.monitor: <uuid.uuid4()>` 的 xattr 属性
 
+<a id="ui"></a>
+
 ## 四. UI ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
 - **应用侧栏**：已配置应用列表，`enabled` 开关一键启停，支持添加 / 移除本机 App
@@ -239,6 +247,8 @@ meta 表存每个文件的元信息；该文件的所有编辑记录在 event �
 - **弹层**：忽略规则候选、本机 App 列表（`mac_apps` 接口扫描）、新应用后缀多选
 
 ***
+
+<a id="skills"></a>
 
 ## 五. SKILL ![✓](https://img.shields.io/badge/-%E2%9C%93-2ea44f)
 
@@ -418,16 +428,30 @@ Worker B — Desc Worker（轮询 status=descing → 目标: 投递 LLM）
    - **Office / Typora 的原子保存**：修改文件后触发保存时，先把原文件**复制**成临时文件（`copy` 保留 xattr，mid 随之复制），在临时文件上写新内容，再 `rename` 原子覆盖原文件—— 任一时刻文件要么是完整旧版、要么是完整新版，防写一半崩溃损坏；代价是 **inode 被替换**（旧版 inode 追踪方案因此断链），但 xattr/mid(魔法标识) 因复制而保留。
    - **为什么能保留**：原子保存会把原文件的 xattr/mid（魔法标识）带到新 inode，所以路径不变、mid 不变、追踪链不断。
 
-#### 1/2. 含图文件(docx, ppt, pdf....📃)
+#### 2/2. 含图文件(docx, ppt, pdf....📃)
 
 >  全文按「骨架 + 图片描述」两段处理。
 
-4. **内容提取**：PDF 用 `pdfplumber` 逐页转为png => base64 ；docx/pptx/xlsx 用 `markitdown` 转换（`keep_data_uris=True` 保留base64）。
-5. **骨架占位符**：所有 `![](data:image/...;base64,xxx)` 替换为 `[[IMG:md5]]`（b64→md5，同图必同 md5，用于判同图）。
-6. **描述复用**：`meta.content` 存「骨架 + `DESC_SEP` 界定符 + 骨架中图片描述 json」；本次图片 md5 命中旧描述 → 直接复用（省 LLM）；新图 → `_vision` 同步调 本地LLM 生成描述。
-7. **diff 生成**：旧骨架 vs 新骨架（含占位符）做 unified diff，再在 diff 内把 `[[IMG:md5]]` 注入 `DESC:描述`（换行转义为字面 `\n` 防 diff 行被拆断；被删除的图用旧描述兜底）。最终 `meta.content` = 新骨架 + 全量描述 json，供下次解析复用。
+* **内容提取**：PDF 用 `pdfplumber` 逐页转为png => base64 ；docx/pptx/xlsx 用 `markitdown` 转换（`keep_data_uris=True` 保留base64）。
+
+* **骨架占位符**：所有 `![](data:image/...;base64,xxx)` 替换为 `[[IMG:md5]]`（b64→md5，同图必同 md5，用于判同图）。
+
+* **描述复用**：`meta.content` 存「骨架 + `DESC_SEP` 界定符 + 骨架中图片描述 json」；本次图片 md5 命中旧描述 → 直接复用（省 LLM）；新图 → `_vision` 同步调 本地LLM 生成描述。
+
+* **diff 生成**：旧骨架 vs 新骨架（含占位符）做 unified diff，再在 diff 内把 `[[IMG:md5]]` 注入 `DESC:描述`（换行转义为字面 `\n` 防 diff 行被拆断；被删除的图用旧描述兜底）。最终 `meta.content` = 新骨架 + 全量描述 json，供下次解析复用。
+
+#### 3/3. 覆盖几乎所有文件! 无论你是什么行业!
+
+> 后期要解析各种格式文件, 都只需要新增一个reader方法即可, 后期自定义和拓展极强!
+>
+> 目前阶段没有做, 因为不了解这方面的工作, 后续需要大家共同构建!
+
+* psd(PhotoShop的工程文件——绘画工作者)
+* prproj(Premiere Pro的工程文件——视频工作者)
+* ptx(Pro Tools的工程文件——音频工作者)
 
 ## License
+> 涉及用户最高隐私,可以做应用,但是强制开源!
 
-MIT
+**AGPLv3**
 
